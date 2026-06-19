@@ -19,10 +19,20 @@ import {
   UnityMessage
 } from '../../../models/family-member.model';
 import { PersonDetailsDialogComponent } from '../../person-details-dialog/person-details-dialog.component';
+import { DialogRef } from '@angular/cdk/dialog';
 import { Subject, throttleTime } from 'rxjs';
 import { TranslationService } from '../../../services/translation.service';
 
 declare const createUnityInstance: any;
+
+/**
+ * Cap the render resolution on high-DPI / Retina screens. Unity otherwise
+ * renders at the full window.devicePixelRatio (e.g. 2x display => 4x the
+ * pixels), which is the main reason the build feels smooth standalone but lags
+ * badly inside the browser. 1.5 keeps it reasonably crisp while cutting the
+ * pixel count dramatically. Lower it towards 1 if more performance is needed.
+ */
+const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
 @Component({
   selector: 'app-unity-container',
@@ -42,7 +52,8 @@ export class UnityContainerComponent {
   private clickSubject = new Subject<any>();
   private selectedLanguage: string = EngLang;
   private memoryCheckInterval: any;
-  private memoryWarningThreshold = 0.85; // 85% of heap limit
+  private memoryWarningThreshold = 0.9; // 90% of heap limit
+  private currentDialogRef: DialogRef<any, PersonDetailsDialogComponent> | null = null;
 
   loading = false;
   nodeData!: FamilyMember;
@@ -51,6 +62,7 @@ export class UnityContainerComponent {
   showPersonCard = signal(false);
   showConnectionCard = signal(false);
   dialogType = signal<'individual' | 'connection' | null>(null);
+  memoryWarning = signal(false);
   isUnityLoading = true;
   loadingMessage = 'Loading Family Tree...';
   loadingProgress = 0;
@@ -67,7 +79,8 @@ export class UnityContainerComponent {
     (window as any).onUnityMessage = this.handleUnityMessage.bind(this);
 
     this.clickSubject.pipe(
-      throttleTime(300, undefined, { leading: true, trailing: false })
+      throttleTime(300, undefined, { leading: true, trailing: false }),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe((data: UnityMessage) => {
       // console.log('✅ Click passed throttle, processing:', data);
       this.processClick(data);
@@ -94,10 +107,26 @@ export class UnityContainerComponent {
       streamingAssetsUrl: "StreamingAssets",
       companyName: "iii",
       productName: "Generation_Tree",
+      // NOTE: bump this whenever the Unity build under assets/unity/Build
+      // changes. The cacheControl below stores the build as "immutable", so a
+      // stale version string would keep serving the old cached build.
       productVersion: "0.1.0",
-      // Increase memory allocation
-      initialMemory: 512 * 1024 * 1024,  // 512MB (default is 256MB)
-      maximumMemory: 1024 * 1024 * 1024  // 1GB max growth
+      // Persist the large build artifacts (data + wasm + framework, ~20MB) in
+      // the browser's IndexedDB (Unity's "UnityCache"). The default policy is
+      // "no-store" for the wasm/framework, which forces a full re-download AND
+      // re-decompression on every load and on every reloadUnity() call. Marking
+      // them "immutable" means they are fetched from disk after the first load,
+      // eliminating the per-reload network + CPU + memory spike.
+      cacheControl: (url: string) =>
+        /\.(data|wasm|framework\.js)\b/.test(url) || /\.bundle/.test(url)
+          ? 'immutable'
+          : 'must-revalidate',
+      // Cap the drawing-buffer resolution on high-DPI displays. Unity reads
+      // Module.devicePixelRatio here; without it Unity renders at the full
+      // window.devicePixelRatio (2x screen => 4x pixels), which is the primary
+      // cause of the in-browser lag versus the standalone build.
+      matchWebGLToCanvasSize: true,
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO),
     }, (progress: number) => {
       this.loadingProgress = Math.round(progress * 100);
     }).then((unityInstance: any) => {
@@ -194,7 +223,12 @@ export class UnityContainerComponent {
   }
 
   private openDialog(data: any): void {
-    const dialogRef = this.dialog.open(PersonDetailsDialogComponent, {
+    // Close any dialog still open from a previous node click. Without this each
+    // click stacks a new overlay + component + subscriptions that are never
+    // released, which is a steady per-interaction memory leak.
+    this.currentDialogRef?.close();
+
+    this.currentDialogRef = this.dialog.open(PersonDetailsDialogComponent, {
       width: '70vw',
       data: {
         nodeData: data,
@@ -203,9 +237,11 @@ export class UnityContainerComponent {
       },
     });
 
-    dialogRef.closed.subscribe(result => {
-      // console.log('The dialog was closed');
-    });
+    this.currentDialogRef.closed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.currentDialogRef = null;
+      });
   }
 
   private startMemoryMonitoring() {
@@ -214,21 +250,19 @@ export class UnityContainerComponent {
       return;
     }
 
+    // Guard against stacking multiple intervals (e.g. after a reload).
+    if (this.memoryCheckInterval) {
+      clearInterval(this.memoryCheckInterval);
+    }
+
     this.memoryCheckInterval = setInterval(() => {
       const memory = (performance as any).memory;
       const usedRatio = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
-      
-      console.log('Memory usage:', {
-        used: (memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB',
-        limit: (memory.jsHeapSizeLimit / 1048576).toFixed(2) + ' MB',
-        percentage: (usedRatio * 100).toFixed(2) + '%'
-      });
 
-      // If approaching memory limit, warn user
-      if (usedRatio > this.memoryWarningThreshold) {
-        console.warn('⚠️ Memory usage critical! Reloading Unity...');
-        this.reloadUnity();
-      }
+      // If approaching the heap limit, surface a non-destructive hint instead
+      // of silently tearing down and reloading the model under the user. The
+      // user stays in control via the "Refresh Tree" button.
+      this.memoryWarning.set(usedRatio > this.memoryWarningThreshold);
     }, 5000); // Check every 5 seconds
   }
 
@@ -237,6 +271,10 @@ export class UnityContainerComponent {
     if (this.memoryCheckInterval) {
       clearInterval(this.memoryCheckInterval);
     }
+
+    // Close any open dialog so it isn't orphaned across the reload.
+    this.currentDialogRef?.close();
+    this.memoryWarning.set(false);
 
     // Show loading message
     this.isUnityLoading = true;
@@ -252,7 +290,8 @@ export class UnityContainerComponent {
       this.unityInstance = null;
     }
 
-    // Wait a bit for cleanup, then reinitialize
+    // Wait a bit for cleanup, then reinitialize. The build is now served from
+    // IndexedDB (see cacheControl), so this no longer re-downloads ~20MB.
     setTimeout(() => {
       this.initializeUnity();
       this.startMemoryMonitoring();
@@ -262,10 +301,19 @@ export class UnityContainerComponent {
   ngOnDestroy() {
     if (this.unityInstance) {
       this.unityInstance.Quit();
+      this.unityInstance = null;
     }
 
     if (this.memoryCheckInterval) {
       clearInterval(this.memoryCheckInterval);
+    }
+
+    this.currentDialogRef?.close();
+
+    // Remove the global callback so the destroyed component (and everything it
+    // closes over) can be garbage collected.
+    if ((window as any).onUnityMessage) {
+      delete (window as any).onUnityMessage;
     }
   }
 }

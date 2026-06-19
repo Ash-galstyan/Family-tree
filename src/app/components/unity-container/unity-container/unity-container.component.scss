@@ -152,7 +152,18 @@ canvas {
   top: 10px;
   right: 10px;
   z-index: 1000;
-  
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .memory-hint {
+    background: rgba(0, 0, 0, 0.6);
+    color: #ffd479;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
   .refresh-button {
     padding: 8px 16px;
     background: #007bff;

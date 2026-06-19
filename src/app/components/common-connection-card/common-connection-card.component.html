@@ -1,0 +1,159 @@
+@if (commonAncestorData) {
+  <div class="ancestor-content">
+    <!-- Header -->
+    <div class="popup-header">
+      <h2>{{ 'connection.common_ancestor_found' | translate }}</h2>
+      <p class="subtitle">{{ 'connection.subtitle' | translate }}</p>
+    </div>
+
+    <!-- 3-Column Grid Layout -->
+    <div class="connection-grid">
+      <!-- Column 1: Member 1 & Lineage -->
+      <div class="lineage-column left-column">
+        <div class="column-header">{{ 'connection.member1_lineage' | translate }}</div>
+        
+        <!-- Member 1 -->
+        <div class="member-card-compact member-1"
+             [class.male]="commonAncestorData.member1.translation.gender === 'male'"
+             [class.female]="commonAncestorData.member1.translation.gender === 'female'">
+          <div class="card-header">
+            <span class="member-label">{{ 'connection.member' | translate }} 1</span>
+            <span class="member-id">{{ commonAncestorData.member1.uu_id }}</span>
+          </div>
+          <h4>{{ commonAncestorData.member1.translation.name }} {{ commonAncestorData.member1.translation.surname }}</h4>
+          <div class="card-details">
+            <span class="detail-compact">
+              @if (commonAncestorData.member1.translation.birthday) {
+                {{ formatYear(commonAncestorData.member1.translation.birthday) }}
+              }
+              @if (commonAncestorData.member1.translation.death_year) {
+                - {{ formatYear(commonAncestorData.member1.translation.death_year) }}
+              }
+            </span>
+          </div>
+        </div>
+
+        <div class="arrow-down">↓</div>
+
+        <!-- Member 1 Lineage -->
+        @for(ancestor of member1Lineage; track ancestor.id) {
+          <div class="member-card-compact lineage-card"
+               [class.male]="ancestor.gender === 'male'"
+               [class.female]="ancestor.gender === 'female'">
+            <div class="card-header">
+              <span class="member-id">{{ ancestor.uu_id }}</span>
+            </div>
+            <h5>{{ ancestor.name }} {{ ancestor.surname }}</h5>
+            <div class="card-details">
+              <span class="detail-compact">
+                @if (ancestor.birthday) {
+                  {{ formatYear(ancestor.birthday) }}
+                }
+                @if (ancestor.death_year) {
+                  - {{ formatYear(ancestor.death_year) }}
+                }
+              </span>
+            </div>
+          </div>
+          
+          @if (!$last) {
+            <div class="arrow-down">↓</div>
+          }
+        }
+      </div>
+
+      <!-- Column 2: Common Ancestor (Center) -->
+      <div class="ancestor-column">
+        <div class="column-header">{{ 'connection.common_ancestor' | translate }}</div>
+        
+        <div class="member-card-compact ancestor-card"
+             [class.male]="commonAncestorData.common_ancestor.translation.gender === 'male'" 
+             [class.female]="commonAncestorData.common_ancestor.translation.gender === 'female'">
+          <div class="ancestor-badge">
+            <i class="icon-tree"></i>
+            {{ 'connection.common_ancestor' | translate }}
+          </div>
+          <div class="card-header">
+            <span class="member-id">{{ commonAncestorData.common_ancestor.uu_id }}</span>
+          </div>
+          <h4 class="ancestor-name">
+            {{ commonAncestorData.common_ancestor.translation.name }} 
+            {{ commonAncestorData.common_ancestor.translation.surname }}
+          </h4>
+          <div class="card-details">
+            <span class="detail-compact">
+              @if (commonAncestorData.common_ancestor.translation.birthday) {
+                {{ formatYear(commonAncestorData.common_ancestor.translation.birthday) }}
+              }
+              @if (commonAncestorData.common_ancestor.translation.death_year) {
+                - {{ formatYear(commonAncestorData.common_ancestor.translation.death_year) }}
+              }
+            </span>
+          </div>
+
+          <!-- Ancestor's Parents -->
+          @if (commonAncestorData.common_ancestor.father) {
+            <div class="ancestor-parents">
+              @if (commonAncestorData.common_ancestor.father) {
+                <div class="parent-compact">
+                  <strong>{{ 'connection.father_short' | translate }}:</strong> {{ commonAncestorData.common_ancestor.father.name }} {{ commonAncestorData.common_ancestor.father.surname }}
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Column 3: Member 2 & Lineage -->
+      <div class="lineage-column right-column">
+        <div class="column-header">{{ 'connection.member2_lineage' | translate }}</div>
+
+        <!-- Member 2 -->
+        <div class="member-card-compact member-2"
+            [class.male]="commonAncestorData.member2.translation.gender === 'male'" 
+            [class.female]="commonAncestorData.member2.translation.gender === 'female'">
+          <div class="card-header">
+            <span class="member-label">{{ 'connection.member' | translate }} 2</span>
+            <span class="member-id">{{ commonAncestorData.member2.uu_id }}</span>
+          </div>
+          <h4>{{ commonAncestorData.member2.translation.name }} {{ commonAncestorData.member2.translation.surname }}</h4>
+          <div class="card-details">
+            <span class="detail-compact">
+              @if (commonAncestorData.member2.translation.birthday) {
+                {{ formatYear(commonAncestorData.member2.translation.birthday) }}
+              }
+              @if (commonAncestorData.member2.translation.death_year) {
+                - {{ formatYear(commonAncestorData.member2.translation.death_year) }}
+              }
+            </span>
+          </div>
+        </div>
+
+        <div class="arrow-down">↓</div>
+        
+        <!-- Member 2 Lineage-->
+        @for(ancestor of member2Lineage; track ancestor.id) {
+          <div class="member-card-compact lineage-card"
+               [class.male]="ancestor.gender === 'male'" 
+               [class.female]="ancestor.gender === 'female'">
+            <div class="card-header">
+              <span class="member-id">{{ ancestor.uu_id }}</span>
+            </div>
+            <h5>{{ ancestor.name }} {{ ancestor.surname }}</h5>
+            <div class="card-details">
+              <span class="detail-compact">
+                {{ formatYear(ancestor.birthday) }}
+                @if (ancestor.death_year) {
+                  - {{ formatYear(ancestor.death_year) }}
+                }
+              </span>
+            </div>
+          </div>
+          @if (!$last) {
+            <div class="arrow-down">↓</div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,22 @@
+<div class="angular-popup">
+    <div class="modal-header">
+        <div class="btn-wrapper">
+            <button class="close-btn" type="button" (click)="dialogRef.close()">×</button>
+        </div>
+    </div>
+    <div class="modal-body">
+        @if (isIndividual()) {
+            <app-person-card
+                [person]="data.nodeData"
+                [showActions]="false"
+                [selectedLanguage]="data.selectedLanguage"
+            ></app-person-card>
+        }
+
+        @if (isConnection()) {
+            <app-common-connection-card
+                [commonAncestorData]="data.nodeData"
+            ></app-common-connection-card>
+        }
+    </div>
+</div>

@@ -1,0 +1,174 @@
+:host {
+  @media (max-width: 768px) {
+    background-color: #262626;
+    height: 100vh;
+    display: block;
+  }
+}
+
+.unity-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+}
+canvas {
+    width: 100%;
+    height: 100%;
+}
+.angular-popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.3);
+    z-index: 10000;
+    min-width: 300px;
+    max-height: 90vh;
+    padding-bottom: 45px;
+
+    .modal-header {
+        padding: 0 1rem;
+    }
+
+    .modal-body {
+        overflow-y: auto;
+        max-height: 80vh;
+
+        &::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        &::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    }
+
+    @media screen and (min-width: 768px) {
+        min-width: 500px
+    }
+}
+
+.tree-result-container {
+    margin-top: 1.5rem;
+}
+
+.person-container {
+    margin-top: 1rem;
+}
+
+.btn-wrapper {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e5e7eb;
+    .close-btn {
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #6d7280;
+
+        &:hover {
+            color: #151a29;
+        }
+    }
+}
+
+// unity-viewer.component.scss
+
+.unity-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+
+.loader-content {
+  text-align: center;
+  color: white;
+  max-width: 400px;
+  padding: 40px;
+}
+
+.spinner {
+  width: 80px;
+  height: 80px;
+  border: 6px solid rgba(255, 255, 255, 0.2);
+  border-top: 6px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 30px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loader-content h3 {
+  margin: 0 0 20px;
+  font-size: 28px;
+  font-weight: 600;
+  color: white;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 20px 0 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: white;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.progress-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.unity-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  
+  .refresh-button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    
+    &:hover:not(:disabled) {
+      background: #0056b3;
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

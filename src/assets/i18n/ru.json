@@ -1,0 +1,40 @@
+{
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "close": "Закрыть",
+    "select": "Выбрать",
+    "selected": "Выбрано"
+  },
+  "person": {
+    "name": "Имя",
+    "surname": "Фамилия",
+    "birthday": "День рождения",
+    "gender_label": "Пол",
+    "biography": "Биография",
+    "born": "Родился",
+    "died": "Умер",
+    "id": "ID",
+    "phone_number": "Телефон",
+    "gender": {
+      "male": "Мужской",
+      "female": "Женский"
+    }
+  },
+  "connection": {
+    "common_ancestor_found": "Найден общий предок",
+    "subtitle": "Связь между двумя членами семьи",
+    "member1_lineage": "Родословная члена 1",
+    "member2_lineage": "Родословная члена 2",
+    "common_ancestor": "Общий предок",
+    "member": "Член",
+    "father_short": "О",
+    "mother_short": "М"
+  },
+  "messages": {
+    "success": "Операция выполнена успешно",
+    "error": "Произошла ошибка"
+  }
+}

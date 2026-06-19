@@ -1,0 +1,40 @@
+{
+  "common": {
+    "save": "Պահպանել",
+    "cancel": "Չեղարկել",
+    "delete": "Ջնջել",
+    "edit": "Խմբագրել",
+    "close": "Փակել",
+    "select": "Ընտրել",
+    "selected": "Ընտրված"
+  },
+  "person": {
+    "name": "Անուն",
+    "surname": "Ազգանուն",
+    "birthday": "Ծննդյան օր",
+    "gender_label": "Սեռ",
+    "biography": "Կենսագրություն",
+    "born": "Ծնված",
+    "died": "Մահացած",
+    "id": "ID",
+    "phone_number": "Հեռախոսահամար",
+    "gender": {
+      "male": "Արական",
+      "female": "Իգական"
+    }
+  },
+  "connection": {
+    "common_ancestor_found": "Ընդհանուր նախնի է գտնվել",
+    "subtitle": "Կապ երկու ընտանիքի անդամների միջև",
+    "member1_lineage": "Անդամ 1-ի ծագումնաբանություն",
+    "member2_lineage": "Անդամ 2-ի ծագումնաբանություն",
+    "common_ancestor": "Ընդհանուր նախնի",
+    "member": "Անդամ",
+    "father_short": "Հ",
+    "mother_short": "Մ"
+  },
+  "messages": {
+    "success": "Գործողությունը հաջողությամբ կատարվեց",
+    "error": "Սխալ է տեղի ունեցել"
+  }
+}

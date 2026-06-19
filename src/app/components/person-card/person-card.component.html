@@ -1,0 +1,45 @@
+@if (person) {
+    <div
+        class="member-card" 
+        [class.male]="person.gender === 'male'" 
+        [class.female]="person.gender === 'female'"
+        [class.selected]="isSelected"
+        (click)="onCardClick()">
+        <div class="card-header">
+            <h3>{{ getFullName() }}</h3>
+            <span class="gender-badge">{{ 'person.gender.' + person.gender | translate }}</span>
+        </div>
+        
+        <div class="card-body">
+            <div class="info-row" *ngIf="person.birthday">
+                <span class="label">{{ 'person.born' | translate }}:</span>
+                <span class="value">{{ person.birthday | date:'mediumDate':undefined:currentLocale }}</span>
+            </div>
+            
+            <div class="info-row" *ngIf="person.death_year">
+                <span class="label">{{ 'person.died' | translate }}:</span>
+                <span class="value">{{ person.death_year | date:'mediumDate':undefined:currentLocale }}</span>
+            </div>
+            
+            <div class="info-row" *ngIf="person.uu_id">
+                <span class="label">{{ 'person.id' | translate }}:</span>
+                <span class="value">{{ person.uu_id }}</span>
+            </div>
+
+            @if (person.phone_numbers && person.phone_numbers.length > 0) {
+                <div class="info-row">
+                    <span class="label">{{ 'person.phone_number' | translate }}:</span>
+                    @for (number of person.phone_numbers; track number) {
+                        <span class="value">{{ number }}</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card-actions" *ngIf="showActions">
+            <button class="btn-select" (click)="onSelect($event)">
+            {{ (isSelected ? 'common.selected' : 'common.select') | translate }}
+            </button>
+        </div>
+    </div>
+}

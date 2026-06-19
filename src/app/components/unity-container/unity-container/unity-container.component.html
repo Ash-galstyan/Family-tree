@@ -1,0 +1,26 @@
+<div class="unity-container">
+    @if (isUnityLoading) {
+        <div class="unity-loader-overlay">
+            <div class="loader-content">
+                <div class="spinner"></div>
+                <h3>{{ loadingMessage }}</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="loadingProgress"></div>
+                </div>
+                <span class="progress-text">{{ loadingProgress }}%</span>
+            </div>
+        </div>
+    }
+
+    <div class="unity-controls">
+        <button class="refresh-button" (click)="reloadUnity()" [disabled]="isUnityLoading">
+            🔄 Refresh Tree
+        </button>
+    </div>
+
+    <canvas #unityCanvas id="unity-canvas" tabindex="-1"></canvas>
+
+    @if(loading) {
+        <div class="siu">Loading...</div>
+    }
+</div>

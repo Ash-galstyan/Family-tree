@@ -1,0 +1,40 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "select": "Select",
+    "selected": "Selected"
+  },
+  "person": {
+    "name": "Name",
+    "surname": "Surname",
+    "birthday": "Birthday",
+    "gender_label": "Gender",
+    "biography": "Biography",
+    "born": "Born",
+    "died": "Died",
+    "id": "ID",
+    "phone_number": "Phone number",
+    "gender": {
+      "male": "Male",
+      "female": "Female"
+    }
+  },
+  "connection": {
+    "common_ancestor_found": "Common Ancestor Found",
+    "subtitle": "Connection between two family members",
+    "member1_lineage": "Member 1 Lineage",
+    "member2_lineage": "Member 2 Lineage",
+    "common_ancestor": "Common Ancestor",
+    "member": "Member",
+    "father_short": "F",
+    "mother_short": "M"
+  },
+  "messages": {
+    "success": "Operation completed successfully",
+    "error": "An error occurred"
+  }
+}

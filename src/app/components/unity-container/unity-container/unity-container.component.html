@@ -13,11 +13,8 @@
     }
 
     <div class="unity-controls">
-        @if (memoryWarning()) {
-            <span class="memory-hint">High memory use — refresh to keep things smooth</span>
-        }
         <button class="refresh-button" (click)="reloadUnity()" [disabled]="isUnityLoading">
-            🔄 Refresh Tree
+            🔄 {{ 'controls.refresh_tree' | translate }}
         </button>
     </div>
 

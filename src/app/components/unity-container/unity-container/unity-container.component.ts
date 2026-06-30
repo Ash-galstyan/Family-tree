@@ -3,12 +3,14 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  NgZone,
   signal,
   ViewChild
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { FamilyTreeService } from '../../../services/family-tree.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 import {
   ArmLang,
   CommonAncestorResponse,
@@ -36,7 +38,7 @@ const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
 @Component({
   selector: 'app-unity-container',
-  imports: [],
+  imports: [TranslatePipe],
   templateUrl: './unity-container.component.html',
   styleUrl: './unity-container.component.scss',
   standalone: true
@@ -46,13 +48,12 @@ export class UnityContainerComponent {
   private destroyRef = inject(DestroyRef);
   private dialog = inject(Dialog);
   private translationService = inject(TranslationService);
+  private ngZone = inject(NgZone);
 
-  
+
   private unityInstance: any;
   private clickSubject = new Subject<any>();
   private selectedLanguage: string = EngLang;
-  private memoryCheckInterval: any;
-  private memoryWarningThreshold = 0.9; // 90% of heap limit
   private currentDialogRef: DialogRef<any, PersonDetailsDialogComponent> | null = null;
 
   loading = false;
@@ -62,7 +63,6 @@ export class UnityContainerComponent {
   showPersonCard = signal(false);
   showConnectionCard = signal(false);
   dialogType = signal<'individual' | 'connection' | null>(null);
-  memoryWarning = signal(false);
   isUnityLoading = true;
   loadingMessage = 'Loading Family Tree...';
   loadingProgress = 0;
@@ -72,9 +72,8 @@ export class UnityContainerComponent {
   ngOnInit() {
     this.loadUnityScripts().then(() => {
       this.initializeUnity();
-      this.startMemoryMonitoring();
     });
-    
+
     // Set up global callback for Unity messages
     (window as any).onUnityMessage = this.handleUnityMessage.bind(this);
 
@@ -82,8 +81,10 @@ export class UnityContainerComponent {
       throttleTime(300, undefined, { leading: true, trailing: false }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe((data: UnityMessage) => {
-      // console.log('✅ Click passed throttle, processing:', data);
-      this.processClick(data);
+      // Unity runs outside Angular's zone (see initializeUnity), so its messages
+      // arrive outside the zone too. Re-enter the zone so the resulting dialogs
+      // and signal updates trigger change detection.
+      this.ngZone.run(() => this.processClick(data));
     });
   }
 
@@ -99,7 +100,13 @@ export class UnityContainerComponent {
 
   private initializeUnity() {
     const canvas = this.canvasRef.nativeElement;
-    
+
+    // Run Unity OUTSIDE Angular's zone. Unity drives a per-frame main loop via
+    // setTimeout/requestAnimationFrame; inside the zone, zone.js turns every
+    // frame into an Angular change-detection pass, which is wasted work. We
+    // re-enter the zone (ngZone.run) only for the callbacks that touch
+    // Angular-bound state.
+    this.ngZone.runOutsideAngular(() => {
     createUnityInstance(canvas, {
       dataUrl: "assets/unity/Build/Build.data.unityweb",
       frameworkUrl: "assets/unity/Build/Build.framework.js.unityweb",
@@ -107,33 +114,35 @@ export class UnityContainerComponent {
       streamingAssetsUrl: "StreamingAssets",
       companyName: "iii",
       productName: "Generation_Tree",
-      // NOTE: bump this whenever the Unity build under assets/unity/Build
-      // changes. The cacheControl below stores the build as "immutable", so a
-      // stale version string would keep serving the old cached build.
       productVersion: "0.1.0",
-      // Persist the large build artifacts (data + wasm + framework, ~20MB) in
-      // the browser's IndexedDB (Unity's "UnityCache"). The default policy is
-      // "no-store" for the wasm/framework, which forces a full re-download AND
-      // re-decompression on every load and on every reloadUnity() call. Marking
-      // them "immutable" means they are fetched from disk after the first load,
-      // eliminating the per-reload network + CPU + memory spike.
+      // Cache the large build artifacts (data + wasm + framework) in the
+      // browser's IndexedDB (Unity's "UnityCache") so they load from disk
+      // instead of re-downloading/re-decompressing on every visit and on every
+      // reloadUnity() call. "must-revalidate" (not "immutable") is deliberate:
+      // it sends a cheap conditional request, so a NEW build is picked up
+      // automatically via its ETag while unchanged builds still load from cache.
       cacheControl: (url: string) =>
         /\.(data|wasm|framework\.js)\b/.test(url) || /\.bundle/.test(url)
-          ? 'immutable'
-          : 'must-revalidate',
+          ? 'must-revalidate'
+          : 'no-store',
       // Cap the drawing-buffer resolution on high-DPI displays. Unity reads
       // Module.devicePixelRatio here; without it Unity renders at the full
-      // window.devicePixelRatio (2x screen => 4x pixels), which is the primary
-      // cause of the in-browser lag versus the standalone build.
+      // window.devicePixelRatio (2x screen => 4x pixels), which is expensive on
+      // Retina/mobile screens for no visible benefit.
       matchWebGLToCanvasSize: true,
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO),
     }, (progress: number) => {
-      this.loadingProgress = Math.round(progress * 100);
+      this.ngZone.run(() => {
+        this.loadingProgress = Math.round(progress * 100);
+      });
     }).then((unityInstance: any) => {
-      this.unityInstance = unityInstance;
-      this.isUnityLoading = false;
+      this.ngZone.run(() => {
+        this.unityInstance = unityInstance;
+        this.isUnityLoading = false;
+      });
     }).catch((message: string) => {
       console.error('Unity initialization failed:', message);
+    });
     });
   }
 
@@ -244,37 +253,9 @@ export class UnityContainerComponent {
       });
   }
 
-  private startMemoryMonitoring() {
-    if (!(performance as any).memory) {
-      console.warn('Memory monitoring not available in this browser');
-      return;
-    }
-
-    // Guard against stacking multiple intervals (e.g. after a reload).
-    if (this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
-    }
-
-    this.memoryCheckInterval = setInterval(() => {
-      const memory = (performance as any).memory;
-      const usedRatio = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
-
-      // If approaching the heap limit, surface a non-destructive hint instead
-      // of silently tearing down and reloading the model under the user. The
-      // user stays in control via the "Refresh Tree" button.
-      this.memoryWarning.set(usedRatio > this.memoryWarningThreshold);
-    }, 5000); // Check every 5 seconds
-  }
-
   public reloadUnity() {
-    // Clear the interval to prevent multiple reloads
-    if (this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
-    }
-
     // Close any open dialog so it isn't orphaned across the reload.
     this.currentDialogRef?.close();
-    this.memoryWarning.set(false);
 
     // Show loading message
     this.isUnityLoading = true;
@@ -290,11 +271,10 @@ export class UnityContainerComponent {
       this.unityInstance = null;
     }
 
-    // Wait a bit for cleanup, then reinitialize. The build is now served from
+    // Wait a bit for cleanup, then reinitialize. The build is served from
     // IndexedDB (see cacheControl), so this no longer re-downloads ~20MB.
     setTimeout(() => {
       this.initializeUnity();
-      this.startMemoryMonitoring();
     }, 1000);
   }
 
@@ -302,10 +282,6 @@ export class UnityContainerComponent {
     if (this.unityInstance) {
       this.unityInstance.Quit();
       this.unityInstance = null;
-    }
-
-    if (this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
     }
 
     this.currentDialogRef?.close();

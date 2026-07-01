@@ -50,7 +50,6 @@ export class UnityContainerComponent {
   private translationService = inject(TranslationService);
   private ngZone = inject(NgZone);
 
-
   private unityInstance: any;
   private clickSubject = new Subject<any>();
   private selectedLanguage: string = EngLang;
@@ -81,9 +80,10 @@ export class UnityContainerComponent {
       throttleTime(300, undefined, { leading: true, trailing: false }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe((data: UnityMessage) => {
-      // Unity runs outside Angular's zone (see initializeUnity), so its messages
-      // arrive outside the zone too. Re-enter the zone so the resulting dialogs
-      // and signal updates trigger change detection.
+      // console.log('✅ Click passed throttle, processing:', data);
+      // Unity now runs outside Angular's zone (see initializeUnity), so its
+      // messages arrive outside the zone too. Re-enter the zone here so the
+      // resulting dialogs/signal updates trigger change detection.
       this.ngZone.run(() => this.processClick(data));
     });
   }
@@ -103,9 +103,10 @@ export class UnityContainerComponent {
 
     // Run Unity OUTSIDE Angular's zone. Unity drives a per-frame main loop via
     // setTimeout/requestAnimationFrame; inside the zone, zone.js turns every
-    // frame into an Angular change-detection pass, which is wasted work. We
-    // re-enter the zone (ngZone.run) only for the callbacks that touch
-    // Angular-bound state.
+    // single frame into an Angular change-detection pass, which is a major
+    // cause of the in-browser lag. Outside the zone the render loop is free, and
+    // we re-enter the zone explicitly (ngZone.run) only for the few callbacks
+    // that update Angular-bound state.
     this.ngZone.runOutsideAngular(() => {
     createUnityInstance(canvas, {
       dataUrl: "assets/unity/Build/Build.data.unityweb",

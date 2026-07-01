@@ -159,25 +159,39 @@ export class UnityContainerComponent {
   private handleUnityMessage(msg: UnityMessage) {
     let data = msg;
     if (typeof msg === 'string') {
-      try { 
-        data = JSON.parse(msg); 
+      try {
+        data = JSON.parse(msg);
       } catch (e) {
         console.error('Failed to parse Unity message:', e);
       }
     }
 
-    // Handle the node click
-    if (data && (data.type === 'text' || data.type === 'connections')) {
+    if (!data) {
+      return;
+    }
+
+    // Apply the language on EVERY message that carries one, not only node/
+    // connection clicks. Switching the language in the canvas arrives as its own
+    // message (a different `type`), which the click filter below drops — so
+    // without this the refresh button and other UI never followed the switch.
+    // Unity calls this from outside Angular's zone, so re-enter it here.
+    if (data.language != null) {
+      const lang = Languages[data.language];
+      if (lang && lang !== this.selectedLanguage()) {
+        this.ngZone.run(() => {
+          this.selectedLanguage.set(lang);
+          this.translationService.setLanguage(lang);
+        });
+      }
+    }
+
+    // Node click / connection -> open the details dialog (throttled).
+    if (data.type === 'text' || data.type === 'connections') {
       this.clickSubject.next(data);
     }
   }
 
   private processClick(data: UnityMessage) {
-    if (data.language || (data.language == 0)) {
-      this.selectedLanguage.set(Languages[data.language]);
-      this.translationService.setLanguage(this.selectedLanguage());
-    }
-
     if (data.type === 'text') {
       const nodeId = parseInt(data.data, 10);
       this.fetchNodeData(nodeId.toString());

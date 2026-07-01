@@ -36,8 +36,5 @@
   "messages": {
     "success": "Operation completed successfully",
     "error": "An error occurred"
-  },
-  "controls": {
-    "refresh_tree": "Refresh Tree"
   }
 }

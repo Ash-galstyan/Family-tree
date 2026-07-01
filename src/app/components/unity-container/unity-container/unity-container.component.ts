@@ -3,6 +3,7 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  NgZone,
   signal,
   ViewChild
 } from '@angular/core';
@@ -46,6 +47,7 @@ export class UnityContainerComponent {
   private destroyRef = inject(DestroyRef);
   private dialog = inject(Dialog);
   private translationService = inject(TranslationService);
+  private ngZone = inject(NgZone);
 
   
   private unityInstance: any;
@@ -83,7 +85,10 @@ export class UnityContainerComponent {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe((data: UnityMessage) => {
       // console.log('✅ Click passed throttle, processing:', data);
-      this.processClick(data);
+      // Unity now runs outside Angular's zone (see initializeUnity), so its
+      // messages arrive outside the zone too. Re-enter the zone here so the
+      // resulting dialogs/signal updates trigger change detection.
+      this.ngZone.run(() => this.processClick(data));
     });
   }
 
@@ -99,7 +104,14 @@ export class UnityContainerComponent {
 
   private initializeUnity() {
     const canvas = this.canvasRef.nativeElement;
-    
+
+    // Run Unity OUTSIDE Angular's zone. Unity drives a per-frame main loop via
+    // setTimeout/requestAnimationFrame; inside the zone, zone.js turns every
+    // single frame into an Angular change-detection pass, which is a major
+    // cause of the in-browser lag. Outside the zone the render loop is free, and
+    // we re-enter the zone explicitly (ngZone.run) only for the few callbacks
+    // that update Angular-bound state.
+    this.ngZone.runOutsideAngular(() => {
     createUnityInstance(canvas, {
       dataUrl: "assets/unity/Build/Build.data.unityweb",
       frameworkUrl: "assets/unity/Build/Build.framework.js.unityweb",
@@ -128,12 +140,17 @@ export class UnityContainerComponent {
       matchWebGLToCanvasSize: true,
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO),
     }, (progress: number) => {
-      this.loadingProgress = Math.round(progress * 100);
+      this.ngZone.run(() => {
+        this.loadingProgress = Math.round(progress * 100);
+      });
     }).then((unityInstance: any) => {
-      this.unityInstance = unityInstance;
-      this.isUnityLoading = false;
+      this.ngZone.run(() => {
+        this.unityInstance = unityInstance;
+        this.isUnityLoading = false;
+      });
     }).catch((message: string) => {
       console.error('Unity initialization failed:', message);
+    });
     });
   }
 

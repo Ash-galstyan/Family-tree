@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   DestroyRef,
   ElementRef,
   inject,
@@ -23,7 +24,6 @@ import { PersonDetailsDialogComponent } from '../../person-details-dialog/person
 import { DialogRef } from '@angular/cdk/dialog';
 import { Subject, throttleTime } from 'rxjs';
 import { TranslationService } from '../../../services/translation.service';
-import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 declare const createUnityInstance: any;
 
@@ -38,7 +38,7 @@ const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
 @Component({
   selector: 'app-unity-container',
-  imports: [TranslatePipe],
+  imports: [],
   templateUrl: './unity-container.component.html',
   styleUrl: './unity-container.component.scss',
   standalone: true
@@ -53,7 +53,9 @@ export class UnityContainerComponent {
   
   private unityInstance: any;
   private clickSubject = new Subject<any>();
-  private selectedLanguage: string = EngLang;
+  // The language Unity is currently showing. Kept as a signal so the refresh
+  // button's label can react to language changes coming from the canvas.
+  private selectedLanguage = signal<string>(EngLang);
   private currentDialogRef: DialogRef<any, PersonDetailsDialogComponent> | null = null;
 
   loading = false;
@@ -63,6 +65,12 @@ export class UnityContainerComponent {
   showPersonCard = signal(false);
   showConnectionCard = signal(false);
   dialogType = signal<'individual' | 'connection' | null>(null);
+  // Refresh-button label, translated into whatever language the canvas selected.
+  // Recomputes when selectedLanguage changes or new translations finish loading.
+  refreshTreeLabel = computed(() => {
+    this.selectedLanguage();
+    return this.translationService.translate('controls.refresh_tree');
+  });
   isUnityLoading = true;
   loadingMessage = 'Loading Family Tree...';
   loadingProgress = 0;
@@ -166,8 +174,8 @@ export class UnityContainerComponent {
 
   private processClick(data: UnityMessage) {
     if (data.language || (data.language == 0)) {
-      this.selectedLanguage = Languages[data.language];
-      this.translationService.setLanguage(this.selectedLanguage);
+      this.selectedLanguage.set(Languages[data.language]);
+      this.translationService.setLanguage(this.selectedLanguage());
     }
 
     if (data.type === 'text') {
@@ -187,12 +195,12 @@ export class UnityContainerComponent {
 
     this.familyTreeService.getPersonProfile(nodeId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {
-        switch(this.selectedLanguage) {
+        switch(this.selectedLanguage()) {
           case ArmLang:
-            this.nodeData = this.getLocalizedPerson(response, this.selectedLanguage);
+            this.nodeData = this.getLocalizedPerson(response, this.selectedLanguage());
             break;
           case RuLang:
-            this.nodeData = this.getLocalizedPerson(response, this.selectedLanguage);
+            this.nodeData = this.getLocalizedPerson(response, this.selectedLanguage());
             break;
           default:
             const {translations, ...englishData} = response;
@@ -226,7 +234,7 @@ export class UnityContainerComponent {
     this.dialogType.set('connection');
     this.loading = true;
     this.showConnectionCard.set(true);
-    this.familyTreeService.getPersonsRelationship(+persons[0], +persons[1], this.selectedLanguage).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((res: CommonAncestorResponse) => {
+    this.familyTreeService.getPersonsRelationship(+persons[0], +persons[1], this.selectedLanguage()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((res: CommonAncestorResponse) => {
       this.commonAncestorData = res;
       this.openDialog(this.commonAncestorData);
       this.loading = false;
@@ -243,7 +251,7 @@ export class UnityContainerComponent {
       width: '70vw',
       data: {
         nodeData: data,
-        selectedLanguage: this.selectedLanguage,
+        selectedLanguage: this.selectedLanguage(),
         dialogType: this.dialogType
       },
     });

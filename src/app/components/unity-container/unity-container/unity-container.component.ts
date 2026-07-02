@@ -238,8 +238,13 @@ export class UnityContainerComponent {
     // released, which is a steady per-interaction memory leak.
     this.currentDialogRef?.close();
 
+    // The connection view shows two lineages side by side and needs the room;
+    // a single person card looks stretched at that width, so give it much less.
+    const isConnection = this.dialogType() === 'connection';
+
     this.currentDialogRef = this.dialog.open(PersonDetailsDialogComponent, {
-      width: '70vw',
+      width: isConnection ? '70vw' : '420px',
+      maxWidth: '90vw',
       data: {
         nodeData: data,
         selectedLanguage: this.selectedLanguage,
